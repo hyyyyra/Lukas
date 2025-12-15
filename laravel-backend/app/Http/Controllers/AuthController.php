@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use App\Services\UserService;
 
 class AuthController extends Controller
 {
@@ -17,19 +15,10 @@ class AuthController extends Controller
             'password' => 'required|string|min:8',
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'currency' => 'CLP', // Moneda por defecto
-        ]);
+        $service = app(UserService::class);
+        $result = $service->register($request->name, $request->email, $request->password);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'token' => $token,
-            'user' => $user,
-        ], 201);
+        return response()->json($result, 201);
     }
 
     public function login(Request $request)
@@ -39,20 +28,10 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $service = app(UserService::class);
+        $result = $service->login($request->email, $request->password);
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Las credenciales proporcionadas son incorrectas.'],
-            ]);
-        }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'token' => $token,
-            'user' => $user,
-        ]);
+        return response()->json($result);
     }
 
     public function logout(Request $request)
