@@ -3,7 +3,6 @@ import { NextResponse } from "next/server"
 // Objetivo: proxy hacia Laravel para registrar usuarios evitando acceso directo a SQL
 export async function POST(request: Request) {
   try {
-    console.log("PASO DENTRO DE ESTE ERROR");
     const payload = await request.json()
     const baseUrl = process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 
@@ -19,7 +18,6 @@ export async function POST(request: Request) {
     const data = await resp.json().catch(() => ({ message: "Error desconocido" }))
     return NextResponse.json(data, { status: resp.status })
   } catch (error: any) {
-    console.log("PASO DENTRO DE ESTE ERROR");
     console.error("[v0] Error en registro:", error)
     return NextResponse.json({ message: "Error al crear cuenta: " + error.message }, { status: 500 })
   }
