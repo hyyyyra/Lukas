@@ -18,6 +18,7 @@ class UserService
 
     public function register(string $name, string $email, string $password): array
     {
+        dd("Entra a función del registro");
         $existing = $this->repo->findByEmail($email);
         if ($existing) {
             throw ValidationException::withMessages([

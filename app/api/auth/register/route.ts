@@ -1,45 +1,25 @@
 import { NextResponse } from "next/server"
-import { query } from "@/lib/mysql"
 
+// Objetivo: proxy hacia Laravel para registrar usuarios evitando acceso directo a SQL
 export async function POST(request: Request) {
   try {
-    const { name, email, password } = await request.json()
+    console.log("PASO DENTRO DE ESTE ERROR");
+    const payload = await request.json()
+    const baseUrl = process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 
-    if (!name || !email || !password) {
-      return NextResponse.json({ message: "Todos los campos son requeridos" }, { status: 400 })
-    }
-
-    const nameParts = name.trim().split(" ")
-    const nombre = nameParts[0]
-    const apellidos = nameParts.slice(1).join(" ") || ""
-
-    const existingUsers = await query("SELECT id FROM usuarios WHERE email = ?", [email])
-
-    if (Array.isArray(existingUsers) && existingUsers.length > 0) {
-      return NextResponse.json({ message: "El email ya está registrado" }, { status: 400 })
-    }
-
-    const result = await query("INSERT INTO usuarios (nombre, apellidos, email, password) VALUES (?, ?, ?, ?)", [
-      nombre,
-      apellidos,
-      email,
-      password,
-    ])
-
-    const insertId = (result as any).insertId
-
-    const token = Buffer.from(`${insertId}:${email}:${Date.now()}`).toString("base64")
-
-    return NextResponse.json({
-      token,
-      user: {
-        id: insertId,
-        nombre,
-        apellidos,
-        email,
+    const resp = await fetch(`${baseUrl}/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
+      body: JSON.stringify(payload),
     })
+
+    const data = await resp.json().catch(() => ({ message: "Error desconocido" }))
+    return NextResponse.json(data, { status: resp.status })
   } catch (error: any) {
+    console.log("PASO DENTRO DE ESTE ERROR");
     console.error("[v0] Error en registro:", error)
     return NextResponse.json({ message: "Error al crear cuenta: " + error.message }, { status: 500 })
   }

@@ -39,6 +39,7 @@ Route::prefix('auth')->group(function () {
 
 // Rutas protegidas con autenticación
 Route::middleware('auth:sanctum')->group(function () {
+    
     // Perfil de usuario
     Route::get('/user/profile', [App\Http\Controllers\UserController::class, 'profile']);
     Route::put('/user/currency', [App\Http\Controllers\UserController::class, 'updateCurrency']);

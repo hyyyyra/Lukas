@@ -1,12 +1,10 @@
 import type { Currency } from "./currency-converter"
-
-// Cliente API para comunicarse con Next.js
 export class ApiClient {
   private baseUrl: string
   private token: string | null = null
 
   constructor() {
-    this.baseUrl = "/api"
+    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || "/api"
   }
 
   setToken(token: string) {
@@ -36,12 +34,14 @@ export class ApiClient {
     }
 
     if (token) {
-      headers.Authorization = `Bearer ${token}`
+      ;(headers as Record<string, string>).Authorization = `Bearer ${token}`
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
       headers,
+      credentials: "include",
+      mode: "cors",
     })
 
     if (!response.ok) {
@@ -52,7 +52,7 @@ export class ApiClient {
     return response.json()
   }
 
-  // Autenticación
+  // Auth
   async login(email: string, password: string) {
     const data = await this.request<{ token: string; user: any }>("/auth/login", {
       method: "POST",
