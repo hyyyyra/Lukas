@@ -4,7 +4,7 @@ export class ApiClient {
   private token: string | null = null
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || "/api"
+    this.baseUrl = process.env.NEXT_PUBLIC_LARAVEL_API_URL || "http://localhost:8000/api"
   }
 
   setToken(token: string) {
@@ -62,10 +62,10 @@ export class ApiClient {
     return data
   }
 
-  async register(name: string, email: string, password: string) {
+  async register(nombre: string, apellido: string, email: string, password: string) {
     const data = await this.request<{ token: string; user: any }>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ nombre, apellido, email, password }),
     })
     this.setToken(data.token)
     return data

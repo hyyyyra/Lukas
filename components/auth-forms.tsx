@@ -49,8 +49,7 @@ export function AuthForms() {
     setErrorMessage("")
 
     try {
-      const fullName = `${registerName} ${registerApellidos}`.trim()
-      const response = await apiClient.register(fullName, registerEmail, registerPassword)
+      const response = await apiClient.register(registerName, registerApellidos, registerEmail, registerPassword)
       setRegisterStatus("success")
 
       setTimeout(() => {
