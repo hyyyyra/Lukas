@@ -214,4 +214,4 @@ php artisan cache:clear
 Desarrollado con Laravel + Next.js para hacer las finanzas más accesibles
 \`\`\`
 
-```md file="" isHidden
+\`\`\`md file="" isHidden

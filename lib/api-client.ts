@@ -1,10 +1,12 @@
 import type { Currency } from "./currency-converter"
+
+// Cliente API para comunicarse con Next.js
 export class ApiClient {
   private baseUrl: string
   private token: string | null = null
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_LARAVEL_API_URL || "http://localhost:8000/api"
+    this.baseUrl = "/api"
   }
 
   setToken(token: string) {
@@ -34,14 +36,12 @@ export class ApiClient {
     }
 
     if (token) {
-      ;(headers as Record<string, string>).Authorization = `Bearer ${token}`
+      headers.Authorization = `Bearer ${token}`
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
       headers,
-      credentials: "include",
-      mode: "cors",
     })
 
     if (!response.ok) {
@@ -52,7 +52,7 @@ export class ApiClient {
     return response.json()
   }
 
-  // Auth
+  // Autenticación
   async login(email: string, password: string) {
     const data = await this.request<{ token: string; user: any }>("/auth/login", {
       method: "POST",
@@ -62,10 +62,10 @@ export class ApiClient {
     return data
   }
 
-  async register(nombre: string, apellido: string, email: string, password: string) {
+  async register(name: string, email: string, password: string) {
     const data = await this.request<{ token: string; user: any }>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ nombre, apellido, email, password }),
+      body: JSON.stringify({ name, email, password }),
     })
     this.setToken(data.token)
     return data
@@ -100,10 +100,6 @@ export class ApiClient {
     })
   }
 
-  async deleteIngreso(id: string) {
-    return this.request(`/ingresos/${id}`, { method: "DELETE" })
-  }
-
   // Gastos
   async getGastos() {
     return this.request<any[]>("/gastos")
@@ -114,6 +110,9 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify({ nombre, monto }),
     })
+  }
+  async deleteIngreso(id: string) {
+    return this.request(`/ingresos/${id}`, { method: "DELETE" })
   }
 
   async deleteGasto(id: string) {
