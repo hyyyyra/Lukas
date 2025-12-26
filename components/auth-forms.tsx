@@ -33,6 +33,12 @@ export function AuthForms() {
     try {
       const response = await apiClient.login(loginEmail, loginPassword)
       setLoginStatus("success")
+      
+      // Guardar información del usuario
+      if (response.user) {
+        const userName = `${response.user.nombre} ${response.user.apellidos || ''}`.trim()
+        localStorage.setItem("userName", userName)
+      }
 
       setTimeout(() => {
         router.push("/")
@@ -52,6 +58,12 @@ export function AuthForms() {
       const fullName = `${registerName} ${registerApellidos}`.trim()
       const response = await apiClient.register(fullName, registerEmail, registerPassword)
       setRegisterStatus("success")
+
+      // Guardar información del usuario
+      if (response.user) {
+        const userName = `${response.user.nombre} ${response.user.apellidos || ''}`.trim()
+        localStorage.setItem("userName", userName)
+      }
 
       setTimeout(() => {
         router.push("/")

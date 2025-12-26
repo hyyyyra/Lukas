@@ -13,13 +13,14 @@ export async function POST(request: Request) {
     const nombre = nameParts[0]
     const apellidos = nameParts.slice(1).join(" ") || ""
 
-    const existingUsers = await query("SELECT id FROM usuarios WHERE email = ?", [email])
+    const existingUsers = await query("SELECT ID_USUARIO FROM usuarios WHERE EMAIL = ?", [email])
 
     if (Array.isArray(existingUsers) && existingUsers.length > 0) {
       return NextResponse.json({ message: "El email ya está registrado" }, { status: 400 })
     }
 
-    const result = await query("INSERT INTO usuarios (nombre, apellidos, email, password) VALUES (?, ?, ?, ?)", [
+    // Nota: Se están usando los nombres de columnas de la base de datos existente (mayúsculas)
+    const result = await query("INSERT INTO usuarios (NOMBRE, APELLIDO, EMAIL, CONTRASENA) VALUES (?, ?, ?, ?)", [
       nombre,
       apellidos,
       email,

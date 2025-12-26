@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -16,8 +16,17 @@ interface WelcomeHeaderProps {
 }
 
 export function WelcomeHeader({ userName, setUserName, currency, onCurrencyChange, onLogout }: WelcomeHeaderProps) {
-  const [isEditing, setIsEditing] = useState(!userName)
+  // Solo mostrar edición si no hay nombre de usuario (usuario no logueado/sin nombre)
+  const [isEditing, setIsEditing] = useState(false)
   const [tempName, setTempName] = useState(userName)
+
+  useEffect(() => {
+    if (!userName) {
+      setIsEditing(true)
+    } else {
+      setIsEditing(false)
+    }
+  }, [userName])
 
   const handleSave = () => {
     if (tempName.trim()) {
@@ -99,9 +108,11 @@ export function WelcomeHeader({ userName, setUserName, currency, onCurrencyChang
           {getGreeting()}, {userName}
         </h1>
         <p className="text-lg text-muted-foreground text-pretty">Organiza tus finanzas de manera simple y tranquila</p>
-        <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="mt-2">
-          Cambiar nombre
-        </Button>
+        {!onLogout && (
+          <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="mt-2">
+            Cambiar nombre
+          </Button>
+        )}
       </div>
     </div>
   )

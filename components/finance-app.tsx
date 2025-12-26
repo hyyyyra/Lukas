@@ -13,7 +13,8 @@ import { FinancialSummary } from "@/components/financial-summary"
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, Target } from "lucide-react"
 import { SavingsGoals } from "@/components/savings-goals"
 import { convertCurrency, type Currency } from "@/lib/currency-converter"
-import { AuthForms } from "@/components/auth-forms"
+import { useRouter } from "next/navigation"
+import { apiClient } from "@/lib/api-client"
 
 interface SavingsGoal {
   id: string
@@ -32,8 +33,8 @@ interface FinancialData {
 }
 
 export function FinanceApp() {
+  const router = useRouter()
   const [userName, setUserName] = useState<string>("")
-  const [showAuth, setShowAuth] = useState(false)
   const [data, setData] = useState<FinancialData>({
     ingresos: [],
     gastos: [],
@@ -44,35 +45,126 @@ export function FinanceApp() {
   })
 
   useEffect(() => {
-    const savedName = localStorage.getItem("userName")
-    const savedData = localStorage.getItem("financialData")
+    const checkAuth = async () => {
+      const savedName = localStorage.getItem("userName")
+      const savedData = localStorage.getItem("financialData")
+      const token = localStorage.getItem("auth_token")
 
-    if (savedName) setUserName(savedName)
-    if (savedData) setData(JSON.parse(savedData))
-  }, [])
+      if (savedName) {
+        setUserName(savedName)
+      } else if (token) {
+        // Si hay token pero no nombre, intentar obtener perfil
+        try {
+          // Asegurar que el token esté en el cliente API
+          apiClient.setToken(token)
+          const profile = await apiClient.getUserProfile()
+          if (profile && profile.name) {
+             // Ajuste: verificar si el backend devuelve 'name' o 'nombre'
+             // Según api-client.ts getUserProfile retorna { id, name, email ... }
+             // Pero auth-forms usaba response.user.nombre.
+             // Asumiremos que getUserProfile devuelve un objeto con 'name' mapeado o 'nombre'.
+             // Si miramos api-client.ts, tipado dice 'name'.
+             // Vamos a usar profile.name
+             const name = profile.name || (profile as any).nombre || (profile as any).NOMBRE || ""
+             if (name) {
+                setUserName(name)
+                localStorage.setItem("userName", name)
+             } else {
+               router.push("/login")
+             }
+          } else {
+            router.push("/login")
+          }
+        } catch (error) {
+          console.error("Error fetching profile", error)
+          router.push("/login")
+        }
+      } else {
+        router.push("/login")
+      }
+
+      if (savedData) {
+        try {
+          setData(JSON.parse(savedData))
+        } catch (e) {
+          console.error("Error parsing financial data", e)
+        }
+      }
+
+      if (token) {
+        // Cargar datos desde la API
+        try {
+          if (!apiClient.getToken()) apiClient.setToken(token)
+
+          const [ingresos, gastos] = await Promise.all([
+            apiClient.getIngresos(),
+            apiClient.getGastos(),
+          ])
+
+          setData((prev) => ({
+            ...prev,
+            ingresos: Array.isArray(ingresos)
+              ? ingresos.map((i: any) => ({
+                  id: i.id.toString(),
+                  nombre: i.nombre,
+                  monto: Number(i.monto),
+                }))
+              : [],
+            gastos: Array.isArray(gastos)
+              ? gastos.map((i: any) => ({
+                  id: i.id.toString(),
+                  nombre: i.nombre,
+                  monto: Number(i.monto),
+                }))
+              : [],
+          }))
+        } catch (error) {
+          console.error("Error fetching financial data", error)
+        }
+      }
+    }
+
+    checkAuth()
+  }, [router])
 
   useEffect(() => {
     if (userName) {
       localStorage.setItem("userName", userName)
     }
-    localStorage.setItem("financialData", JSON.stringify(data))
-  }, [userName, data])
+  }, [userName])
 
-  const addIngreso = (nombre: string, monto: number) => {
+  useEffect(() => {
+    localStorage.setItem("financialData", JSON.stringify(data))
+  }, [data])
+
+  const addIngreso = async (nombre: string, monto: number) => {
     if (nombre && monto > 0) {
-      setData({
-        ...data,
-        ingresos: [...data.ingresos, { id: Date.now().toString(), nombre, monto }],
-      })
+      try {
+        const newIngreso = await apiClient.createIngreso(nombre, monto)
+        setData((prev) => ({
+          ...prev,
+          ingresos: [...prev.ingresos, { ...newIngreso, id: newIngreso.id.toString() }],
+        }))
+      } catch (error) {
+        console.error("Error saving ingreso:", error)
+        // Fallback or alert
+        alert("Error al guardar el ingreso. Por favor intente nuevamente.")
+      }
     }
   }
 
-  const addGasto = (nombre: string, monto: number) => {
+  const addGasto = async (nombre: string, monto: number) => {
     if (nombre && monto > 0) {
-      setData({
-        ...data,
-        gastos: [...data.gastos, { id: Date.now().toString(), nombre, monto }],
-      })
+      try {
+        const newGasto = await apiClient.createGasto(nombre, monto)
+        setData((prev) => ({
+          ...prev,
+          gastos: [...prev.gastos, { ...newGasto, id: newGasto.id.toString() }],
+        }))
+      } catch (error) {
+        console.error("Error saving gasto:", error)
+        alert("Error al guardar el gasto. Por favor intente nuevamente.")
+      }
     }
   }
 
@@ -85,12 +177,19 @@ export function FinanceApp() {
     }
   }
 
-  const addPrestamo = (nombre: string, monto: number, tasa: number) => {
+  const addPrestamo = async (nombre: string, monto: number) => {
     if (nombre && monto > 0) {
-      setData({
-        ...data,
-        prestamos: [...data.prestamos, { id: Date.now().toString(), nombre, monto, tasa }],
-      })
+      try {
+        const newPrestamo = await apiClient.createPrestamo(nombre, monto)
+        setData((prev) => ({
+          ...prev,
+          prestamos: [...prev.prestamos, { ...newPrestamo, id: newPrestamo.id.toString() }],
+        }))
+      } catch (error) {
+        console.error("Error saving préstamo:", error)
+        // Fallback or alert
+        alert("Error al guardar el préstamo. Por favor intente nuevamente.")
+      }
     }
   }
 
@@ -125,12 +224,25 @@ export function FinanceApp() {
     })
   }
 
-  const removeItem = (type: keyof FinancialData, id: string) => {
-    if (Array.isArray(data[type])) {
-      setData({
-        ...data,
-        [type]: (data[type] as any[]).filter((item) => item.id !== id),
-      })
+  const removeItem = async (type: keyof FinancialData, id: string) => {
+    try {
+      if (type === "ingresos") {
+        await apiClient.deleteIngreso(id)
+      } else if (type === "gastos") {
+        await apiClient.deleteGasto(id)
+      } else if (type === "prestamos") {
+        await apiClient.deletePrestamo(id)
+      }
+
+      if (Array.isArray(data[type])) {
+        setData((prev) => ({
+          ...prev,
+          [type]: (prev[type] as any[]).filter((item) => item.id !== id),
+        }))
+      }
+    } catch (error) {
+      console.error(`Error deleting ${type}:`, error)
+      alert(`Error al eliminar ${type === "ingresos" ? "el ingreso" : type === "gastos" ? "el gasto" : "el préstamo"}. Por favor intente nuevamente.`)
     }
   }
 
@@ -138,6 +250,7 @@ export function FinanceApp() {
     if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
       localStorage.removeItem("userName")
       localStorage.removeItem("financialData")
+      localStorage.removeItem("auth_token")
       setUserName("")
       setData({
         ingresos: [],
@@ -147,7 +260,7 @@ export function FinanceApp() {
         metasAhorro: [],
         moneda: "CLP",
       })
-      setShowAuth(true)
+      router.push("/login")
     }
   }
 
@@ -185,19 +298,6 @@ export function FinanceApp() {
     setData(convertedData)
   }
 
-  if (showAuth) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <AuthForms />
-          <Button variant="ghost" onClick={() => setShowAuth(false)} className="w-full mt-4">
-            Volver sin iniciar sesión
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -231,7 +331,7 @@ export function FinanceApp() {
             </TabsTrigger>
             <TabsTrigger value="metas" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
-              <span className="hidden sm:inline">Metas</span>
+              <span className="hidden sm:inline">Ahorros  </span>
             </TabsTrigger>
           </TabsList>
 
@@ -384,7 +484,7 @@ function GastoForm({ onAdd, currency }: { onAdd: (nombre: string, monto: number)
     <form onSubmit={handleSubmit} className="space-y-4 mb-6">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="gasto-nombre">Tipo de gasto</Label>
+          <Label htmlFor="gasto-nombre">Nombre de gasto</Label>
           <Input
             id="gasto-nombre"
             placeholder="Ej: Alquiler, Comida..."
@@ -457,7 +557,7 @@ function DeudaForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="deuda-tasa">Tasa de interés (%)</Label>
+          <Label htmlFor="deuda-tasa">Cantidad de cuotas</Label>
           <Input
             id="deuda-tasa"
             type="number"
@@ -480,24 +580,22 @@ function DeudaForm({
 function PrestamoForm({
   onAdd,
   currency,
-}: { onAdd: (nombre: string, monto: number, tasa: number) => void; currency: string }) {
+}: { onAdd: (nombre: string, monto: number) => void; currency: string }) {
   const [nombre, setNombre] = useState("")
   const [monto, setMonto] = useState("")
-  const [tasa, setTasa] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onAdd(nombre, Number.parseFloat(monto), Number.parseFloat(tasa))
+    onAdd(nombre, Number.parseFloat(monto))
     setNombre("")
     setMonto("")
-    setTasa("")
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="prestamo-nombre">Nombre del préstamo</Label>
+          <Label htmlFor="prestamo-nombre">Título del préstamo</Label>
           <Input
             id="prestamo-nombre"
             placeholder="Ej: Préstamo a Juan..."
@@ -516,19 +614,6 @@ function PrestamoForm({
             onChange={(e) => setMonto(e.target.value)}
             required
             step="0.01"
-            min="0"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="prestamo-tasa">Tasa de interés (%)</Label>
-          <Input
-            id="prestamo-tasa"
-            type="number"
-            placeholder="0.0"
-            value={tasa}
-            onChange={(e) => setTasa(e.target.value)}
-            required
-            step="0.1"
             min="0"
           />
         </div>

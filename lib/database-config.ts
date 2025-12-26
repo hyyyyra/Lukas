@@ -1,5 +1,3 @@
-// Esta estructura permite cambiar fácilmente entre diferentes proveedores de BDD
-
 export const DATABASE_CONFIG = {
   // Laravel Backend con MySQL
   LARAVEL: {
@@ -15,10 +13,10 @@ export const DATABASE_CONFIG = {
   // PostgreSQL directo (solo server-side)
   POSTGRES: {
     HOST: process.env.DATABASE_HOST || "localhost",
-    PORT: process.env.DATABASE_PORT || "5432",
-    DATABASE: process.env.DATABASE_NAME || "finanzas_app",
-    USER: process.env.DATABASE_USER || "",
-    PASSWORD: process.env.DATABASE_PASSWORD || "",
+    PORT: process.env.DATABASE_PORT || "3306",
+    DATABASE: process.env.DATABASE_NAME || "lucas_desa",
+    USER: process.env.DATABASE_USER || "fabian",
+    PASSWORD: process.env.DATABASE_PASSWORD || "fabi123",
   },
 
   // MongoDB (solo server-side)
@@ -32,7 +30,7 @@ export const DATABASE_CONFIG = {
     port: Number.parseInt(process.env.DB_PORT || "3306"),
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_DATABASE || "finanzas_app",
+    database: process.env.DB_DATABASE || "lucas_desa",
   },
 }
 
@@ -53,7 +51,7 @@ export function getLaravelApiUrl(): string {
 export const DB_CONFIG = {
   host: process.env.DB_HOST || "localhost",
   port: Number.parseInt(process.env.DB_PORT || "3306"),
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_DATABASE || "finanzas_app",
+  user: process.env.DB_USER || "fabian",
+  password: process.env.DB_PASSWORD || "fabi123",
+  database: process.env.DB_DATABASE || "lucas_desa",
 }

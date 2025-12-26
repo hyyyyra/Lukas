@@ -9,7 +9,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Email y contraseña son requeridos" }, { status: 400 })
     }
 
-    const users = await query("SELECT * FROM usuarios WHERE email = ?", [email])
+    const users = await query("SELECT * FROM usuarios WHERE EMAIL = ?", [email])
 
     if (!Array.isArray(users) || users.length === 0) {
       return NextResponse.json({ message: "Credenciales inválidas" }, { status: 401 })
@@ -17,19 +17,20 @@ export async function POST(request: Request) {
 
     const user = users[0]
 
-    if (user.password !== password) {
+    // Nota: CONTRASENA almacena la contraseña. En producción debería usarse hash.
+    if (user.CONTRASENA !== password) {
       return NextResponse.json({ message: "Credenciales inválidas" }, { status: 401 })
     }
 
-    const token = Buffer.from(`${user.id}:${user.email}:${Date.now()}`).toString("base64")
+    const token = Buffer.from(`${user.ID_USUARIO}:${user.EMAIL}:${Date.now()}`).toString("base64")
 
     return NextResponse.json({
       token,
       user: {
-        id: user.id,
-        nombre: user.nombre,
-        apellidos: user.apellidos,
-        email: user.email,
+        id: user.ID_USUARIO,
+        nombre: user.NOMBRE,
+        apellidos: user.APELLIDO,
+        email: user.EMAIL,
       },
     })
   } catch (error: any) {
