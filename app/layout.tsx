@@ -7,7 +7,7 @@ import "./globals.css"
 const _geist = Geist({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Mi Finanzas - Organiza tu futuro financiero",
+  title: "Lukas",
   description: "Herramienta simple y acogedora para gestionar tus finanzas personales",
   generator: "v0.app",
   icons: {

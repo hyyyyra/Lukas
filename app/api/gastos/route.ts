@@ -64,3 +64,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Error al crear gasto" }, { status: 500 })
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const authHeader = request.headers.get("Authorization")
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ message: "No autorizado" }, { status: 401 })
+    }
+
+    const token = authHeader.split(" ")[1]
+    const decoded = Buffer.from(token, "base64").toString("utf-8")
+    const [userId] = decoded.split(":")
+
+    if (!userId) {
+      return NextResponse.json({ message: "Token inválido" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get("id")
+
+    if (!id) {
+      return NextResponse.json({ message: "ID requerido" }, { status: 400 })
+    }
+
+    await query("DELETE FROM gastos WHERE ID_GASTO = ? AND ID_USUARIO = ?", [id, userId])
+
+    return NextResponse.json({ message: "Gasto eliminado" })
+  } catch (error: any) {
+    console.error("Error eliminando gasto:", error)
+    return NextResponse.json({ message: "Error al eliminar gasto" }, { status: 500 })
+  }
+}

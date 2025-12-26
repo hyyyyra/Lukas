@@ -177,12 +177,19 @@ export function FinanceApp() {
     }
   }
 
-  const addPrestamo = (nombre: string, monto: number, tasa: number) => {
+  const addPrestamo = async (nombre: string, monto: number) => {
     if (nombre && monto > 0) {
-      setData({
-        ...data,
-        prestamos: [...data.prestamos, { id: Date.now().toString(), nombre, monto, tasa }],
-      })
+      try {
+        const newPrestamo = await apiClient.createPrestamo(nombre, monto)
+        setData((prev) => ({
+          ...prev,
+          prestamos: [...prev.prestamos, { ...newPrestamo, id: newPrestamo.id.toString() }],
+        }))
+      } catch (error) {
+        console.error("Error saving préstamo:", error)
+        // Fallback or alert
+        alert("Error al guardar el préstamo. Por favor intente nuevamente.")
+      }
     }
   }
 
@@ -217,12 +224,25 @@ export function FinanceApp() {
     })
   }
 
-  const removeItem = (type: keyof FinancialData, id: string) => {
-    if (Array.isArray(data[type])) {
-      setData({
-        ...data,
-        [type]: (data[type] as any[]).filter((item) => item.id !== id),
-      })
+  const removeItem = async (type: keyof FinancialData, id: string) => {
+    try {
+      if (type === "ingresos") {
+        await apiClient.deleteIngreso(id)
+      } else if (type === "gastos") {
+        await apiClient.deleteGasto(id)
+      } else if (type === "prestamos") {
+        await apiClient.deletePrestamo(id)
+      }
+
+      if (Array.isArray(data[type])) {
+        setData((prev) => ({
+          ...prev,
+          [type]: (prev[type] as any[]).filter((item) => item.id !== id),
+        }))
+      }
+    } catch (error) {
+      console.error(`Error deleting ${type}:`, error)
+      alert(`Error al eliminar ${type === "ingresos" ? "el ingreso" : type === "gastos" ? "el gasto" : "el préstamo"}. Por favor intente nuevamente.`)
     }
   }
 
@@ -311,7 +331,7 @@ export function FinanceApp() {
             </TabsTrigger>
             <TabsTrigger value="metas" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
-              <span className="hidden sm:inline">Metas</span>
+              <span className="hidden sm:inline">Ahorros  </span>
             </TabsTrigger>
           </TabsList>
 
@@ -464,7 +484,7 @@ function GastoForm({ onAdd, currency }: { onAdd: (nombre: string, monto: number)
     <form onSubmit={handleSubmit} className="space-y-4 mb-6">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="gasto-nombre">Tipo de gasto</Label>
+          <Label htmlFor="gasto-nombre">Nombre de gasto</Label>
           <Input
             id="gasto-nombre"
             placeholder="Ej: Alquiler, Comida..."
@@ -537,7 +557,7 @@ function DeudaForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="deuda-tasa">Tasa de interés (%)</Label>
+          <Label htmlFor="deuda-tasa">Cantidad de cuotas</Label>
           <Input
             id="deuda-tasa"
             type="number"
@@ -560,24 +580,22 @@ function DeudaForm({
 function PrestamoForm({
   onAdd,
   currency,
-}: { onAdd: (nombre: string, monto: number, tasa: number) => void; currency: string }) {
+}: { onAdd: (nombre: string, monto: number) => void; currency: string }) {
   const [nombre, setNombre] = useState("")
   const [monto, setMonto] = useState("")
-  const [tasa, setTasa] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onAdd(nombre, Number.parseFloat(monto), Number.parseFloat(tasa))
+    onAdd(nombre, Number.parseFloat(monto))
     setNombre("")
     setMonto("")
-    setTasa("")
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="prestamo-nombre">Nombre del préstamo</Label>
+          <Label htmlFor="prestamo-nombre">Título del préstamo</Label>
           <Input
             id="prestamo-nombre"
             placeholder="Ej: Préstamo a Juan..."
@@ -596,19 +614,6 @@ function PrestamoForm({
             onChange={(e) => setMonto(e.target.value)}
             required
             step="0.01"
-            min="0"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="prestamo-tasa">Tasa de interés (%)</Label>
-          <Input
-            id="prestamo-tasa"
-            type="number"
-            placeholder="0.0"
-            value={tasa}
-            onChange={(e) => setTasa(e.target.value)}
-            required
-            step="0.1"
             min="0"
           />
         </div>

@@ -100,6 +100,12 @@ export class ApiClient {
     })
   }
 
+  async deleteIngreso(id: string) {
+    return this.request(`/ingresos?id=${id}`, {
+      method: "DELETE",
+    })
+  }
+
   // Gastos
   async getGastos() {
     return this.request<any[]>("/gastos")
@@ -111,12 +117,11 @@ export class ApiClient {
       body: JSON.stringify({ nombre, monto }),
     })
   }
-  async deleteIngreso(id: string) {
-    return this.request(`/ingresos/${id}`, { method: "DELETE" })
-  }
 
   async deleteGasto(id: string) {
-    return this.request(`/gastos/${id}`, { method: "DELETE" })
+    return this.request(`/gastos?id=${id}`, {
+      method: "DELETE",
+    })
   }
 
   // Deudas
@@ -132,7 +137,9 @@ export class ApiClient {
   }
 
   async deleteDeuda(id: string) {
-    return this.request(`/deudas/${id}`, { method: "DELETE" })
+    return this.request(`/deudas?id=${id}`, {
+      method: "DELETE",
+    })
   }
 
   // Préstamos
@@ -140,15 +147,17 @@ export class ApiClient {
     return this.request<any[]>("/prestamos")
   }
 
-  async createPrestamo(nombre: string, monto: number, tasa: number) {
+  async createPrestamo(nombre: string, monto: number) {
     return this.request("/prestamos", {
       method: "POST",
-      body: JSON.stringify({ nombre, monto, tasa }),
+      body: JSON.stringify({ nombre, monto }),
     })
   }
 
   async deletePrestamo(id: string) {
-    return this.request(`/prestamos/${id}`, { method: "DELETE" })
+    return this.request(`/prestamos?id=${id}`, {
+      method: "DELETE",
+    })
   }
 
   // Metas de ahorro
