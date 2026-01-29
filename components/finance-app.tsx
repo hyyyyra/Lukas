@@ -10,41 +10,31 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WelcomeHeader } from "@/components/welcome-header"
 import { FinancialSummary } from "@/components/financial-summary"
-import { TrendingUp, TrendingDown, DollarSign, CreditCard, Target } from "lucide-react"
-import { SavingsGoals } from "@/components/savings-goals"
+import { TrendingUp, TrendingDown } from "lucide-react"
+
 import { convertCurrency, type Currency } from "@/lib/currency-converter"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 
-interface SavingsGoal {
-  id: string
-  titulo: string
-  metaMonto: number
-  montoActual: number
-}
-
 interface FinancialData {
   ingresos: Array<{ id: string; nombre: string; monto: number }>
   gastos: Array<{ id: string; nombre: string; monto: number }>
-  deudas: Array<{ id: string; nombre: string; monto: number; tasa: number }>
-  prestamos: Array<{ id: string; nombre: string; monto: number; tasa: number }>
-  metasAhorro: SavingsGoal[]
   moneda: Currency
 }
 
 export function FinanceApp() {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
   const [userName, setUserName] = useState<string>("")
   const [data, setData] = useState<FinancialData>({
     ingresos: [],
     gastos: [],
-    deudas: [],
-    prestamos: [],
-    metasAhorro: [],
     moneda: "CLP",
   })
 
   useEffect(() => {
+    setMounted(true)
+
     const checkAuth = async () => {
       const savedName = localStorage.getItem("userName")
       const savedData = localStorage.getItem("financialData")
@@ -53,27 +43,17 @@ export function FinanceApp() {
       if (savedName) {
         setUserName(savedName)
       } else if (token) {
-        // Si hay token pero no nombre, intentar obtener perfil
         try {
-          // Asegurar que el token esté en el cliente API
           apiClient.setToken(token)
           const profile = await apiClient.getUserProfile()
-          if (profile && profile.name) {
-             // Ajuste: verificar si el backend devuelve 'name' o 'nombre'
-             // Según api-client.ts getUserProfile retorna { id, name, email ... }
-             // Pero auth-forms usaba response.user.nombre.
-             // Asumiremos que getUserProfile devuelve un objeto con 'name' mapeado o 'nombre'.
-             // Si miramos api-client.ts, tipado dice 'name'.
-             // Vamos a usar profile.name
-             const name = profile.name || (profile as any).nombre || (profile as any).NOMBRE || ""
-             if (name) {
-                setUserName(name)
-                localStorage.setItem("userName", name)
-             } else {
-               router.push("/login")
-             }
-          } else {
-            router.push("/login")
+          if (profile) {
+            const name = (profile as any).name || (profile as any).nombre || (profile as any).NOMBRE || ""
+            if (name) {
+              setUserName(name)
+              localStorage.setItem("userName", name)
+            } else {
+              router.push("/login")
+            }
           }
         } catch (error) {
           console.error("Error fetching profile", error)
@@ -92,10 +72,7 @@ export function FinanceApp() {
       }
 
       if (token) {
-        // Cargar datos desde la API
         try {
-          if (!apiClient.getToken()) apiClient.setToken(token)
-
           const [ingresos, gastos] = await Promise.all([
             apiClient.getIngresos(),
             apiClient.getGastos(),
@@ -105,17 +82,17 @@ export function FinanceApp() {
             ...prev,
             ingresos: Array.isArray(ingresos)
               ? ingresos.map((i: any) => ({
-                  id: i.id.toString(),
-                  nombre: i.nombre,
-                  monto: Number(i.monto),
-                }))
+                id: i.id.toString(),
+                nombre: i.nombre,
+                monto: Number(i.monto),
+              }))
               : [],
             gastos: Array.isArray(gastos)
               ? gastos.map((i: any) => ({
-                  id: i.id.toString(),
-                  nombre: i.nombre,
-                  monto: Number(i.monto),
-                }))
+                id: i.id.toString(),
+                nombre: i.nombre,
+                monto: Number(i.monto),
+              }))
               : [],
           }))
         } catch (error) {
@@ -143,7 +120,7 @@ export function FinanceApp() {
         const newIngreso = await apiClient.createIngreso(nombre, monto)
         setData((prev) => ({
           ...prev,
-          ingresos: [...prev.ingresos, { ...newIngreso, id: newIngreso.id.toString() }],
+          ingresos: [...prev.ingresos, { ...(newIngreso as any), id: (newIngreso as any).id.toString() }],
         }))
       } catch (error) {
         console.error("Error saving ingreso:", error)
@@ -159,7 +136,7 @@ export function FinanceApp() {
         const newGasto = await apiClient.createGasto(nombre, monto)
         setData((prev) => ({
           ...prev,
-          gastos: [...prev.gastos, { ...newGasto, id: newGasto.id.toString() }],
+          gastos: [...prev.gastos, { ...(newGasto as any), id: (newGasto as any).id.toString() }],
         }))
       } catch (error) {
         console.error("Error saving gasto:", error)
@@ -168,70 +145,12 @@ export function FinanceApp() {
     }
   }
 
-  const addDeuda = (nombre: string, monto: number, tasa: number) => {
-    if (nombre && monto > 0) {
-      setData({
-        ...data,
-        deudas: [...data.deudas, { id: Date.now().toString(), nombre, monto, tasa }],
-      })
-    }
-  }
-
-  const addPrestamo = async (nombre: string, monto: number) => {
-    if (nombre && monto > 0) {
-      try {
-        const newPrestamo = await apiClient.createPrestamo(nombre, monto)
-        setData((prev) => ({
-          ...prev,
-          prestamos: [...prev.prestamos, { ...newPrestamo, id: newPrestamo.id.toString() }],
-        }))
-      } catch (error) {
-        console.error("Error saving préstamo:", error)
-        // Fallback or alert
-        alert("Error al guardar el préstamo. Por favor intente nuevamente.")
-      }
-    }
-  }
-
-  const addMetaAhorro = (titulo: string, metaMonto: number) => {
-    if (titulo && metaMonto > 0) {
-      setData({
-        ...data,
-        metasAhorro: [
-          ...data.metasAhorro,
-          {
-            id: Date.now().toString(),
-            titulo,
-            metaMonto,
-            montoActual: 0,
-          },
-        ],
-      })
-    }
-  }
-
-  const updateMetaAhorro = (id: string, montoActual: number) => {
-    setData({
-      ...data,
-      metasAhorro: data.metasAhorro.map((meta) => (meta.id === id ? { ...meta, montoActual } : meta)),
-    })
-  }
-
-  const removeMetaAhorro = (id: string) => {
-    setData({
-      ...data,
-      metasAhorro: data.metasAhorro.filter((meta) => meta.id !== id),
-    })
-  }
-
   const removeItem = async (type: keyof FinancialData, id: string) => {
     try {
       if (type === "ingresos") {
         await apiClient.deleteIngreso(id)
       } else if (type === "gastos") {
         await apiClient.deleteGasto(id)
-      } else if (type === "prestamos") {
-        await apiClient.deletePrestamo(id)
       }
 
       if (Array.isArray(data[type])) {
@@ -242,7 +161,7 @@ export function FinanceApp() {
       }
     } catch (error) {
       console.error(`Error deleting ${type}:`, error)
-      alert(`Error al eliminar ${type === "ingresos" ? "el ingreso" : type === "gastos" ? "el gasto" : "el préstamo"}. Por favor intente nuevamente.`)
+      alert(`Error al eliminar ${type === "ingresos" ? "el ingreso" : "el gasto"}. Por favor intente nuevamente.`)
     }
   }
 
@@ -255,9 +174,6 @@ export function FinanceApp() {
       setData({
         ingresos: [],
         gastos: [],
-        deudas: [],
-        prestamos: [],
-        metasAhorro: [],
         moneda: "CLP",
       })
       router.push("/login")
@@ -280,26 +196,15 @@ export function FinanceApp() {
         ...item,
         monto: convertCurrency(item.monto, oldCurrency, newCurrency),
       })),
-      deudas: data.deudas.map((item) => ({
-        ...item,
-        monto: convertCurrency(item.monto, oldCurrency, newCurrency),
-      })),
-      prestamos: data.prestamos.map((item) => ({
-        ...item,
-        monto: convertCurrency(item.monto, oldCurrency, newCurrency),
-      })),
-      metasAhorro: data.metasAhorro.map((meta) => ({
-        ...meta,
-        metaMonto: convertCurrency(meta.metaMonto, oldCurrency, newCurrency),
-        montoActual: convertCurrency(meta.montoActual, oldCurrency, newCurrency),
-      })),
     }
 
     setData(convertedData)
   }
 
+  if (!mounted) return null
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <WelcomeHeader
           userName={userName}
@@ -312,7 +217,7 @@ export function FinanceApp() {
         <FinancialSummary data={data} currency={data.moneda} />
 
         <Tabs defaultValue="ingresos" className="mt-8">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 gap-2 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-2 gap-2 h-auto p-1">
             <TabsTrigger value="ingresos" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Ingresos</span>
@@ -320,18 +225,6 @@ export function FinanceApp() {
             <TabsTrigger value="gastos" className="flex items-center gap-2">
               <TrendingDown className="h-4 w-4" />
               <span className="hidden sm:inline">Gastos</span>
-            </TabsTrigger>
-            <TabsTrigger value="deudas" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Deudas</span>
-            </TabsTrigger>
-            <TabsTrigger value="prestamos" className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              <span className="hidden sm:inline">Préstamos</span>
-            </TabsTrigger>
-            <TabsTrigger value="metas" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              <span className="hidden sm:inline">Ahorros  </span>
             </TabsTrigger>
           </TabsList>
 
@@ -370,54 +263,6 @@ export function FinanceApp() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="deudas" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Deudas</CardTitle>
-                <CardDescription>Organiza tus deudas para tener claridad</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DeudaForm onAdd={addDeuda} currency={data.moneda} />
-                <DeudaList items={data.deudas} onRemove={(id) => removeItem("deudas", id)} currency={data.moneda} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="prestamos" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Préstamos</CardTitle>
-                <CardDescription>Gestiona los préstamos que has otorgado</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PrestamoForm onAdd={addPrestamo} currency={data.moneda} />
-                <DeudaList
-                  items={data.prestamos}
-                  onRemove={(id) => removeItem("prestamos", id)}
-                  currency={data.moneda}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="metas" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Metas de Ahorro</CardTitle>
-                <CardDescription>Crea y gestiona tus objetivos financieros personales</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SavingsGoals
-                  metas={data.metasAhorro}
-                  onAdd={addMetaAhorro}
-                  onUpdate={updateMetaAhorro}
-                  onRemove={removeMetaAhorro}
-                  currency={data.moneda}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
     </div>
@@ -426,13 +271,31 @@ export function FinanceApp() {
 
 function IngresoForm({ onAdd, currency }: { onAdd: (nombre: string, monto: number) => void; currency: string }) {
   const [nombre, setNombre] = useState("")
-  const [monto, setMonto] = useState("")
+  const [montoDisplay, setMontoDisplay] = useState("")
+
+  const formatInputValue = (val: string) => {
+    // Remove all non-digits
+    const rawValue = val.replace(/\D/g, "")
+    if (!rawValue) return ""
+
+    if (currency === "CLP") {
+      // Add dots every 3 digits
+      return rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+    }
+    return rawValue
+  }
+
+  const handleMontoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatInputValue(e.target.value)
+    setMontoDisplay(formatted)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onAdd(nombre, Number.parseFloat(monto))
+    const rawValue = montoDisplay.replace(/\./g, "")
+    onAdd(nombre, Number.parseFloat(rawValue))
     setNombre("")
-    setMonto("")
+    setMontoDisplay("")
   }
 
   return (
@@ -452,13 +315,12 @@ function IngresoForm({ onAdd, currency }: { onAdd: (nombre: string, monto: numbe
           <Label htmlFor="ingreso-monto">Monto mensual ({currency})</Label>
           <Input
             id="ingreso-monto"
-            type="number"
-            placeholder="0.00"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
+            type="text"
+            inputMode="numeric"
+            placeholder={currency === "CLP" ? "Ej: 1.000.000" : "0.00"}
+            value={montoDisplay}
+            onChange={handleMontoChange}
             required
-            step="0.01"
-            min="0"
           />
         </div>
       </div>
@@ -471,13 +333,29 @@ function IngresoForm({ onAdd, currency }: { onAdd: (nombre: string, monto: numbe
 
 function GastoForm({ onAdd, currency }: { onAdd: (nombre: string, monto: number) => void; currency: string }) {
   const [nombre, setNombre] = useState("")
-  const [monto, setMonto] = useState("")
+  const [montoDisplay, setMontoDisplay] = useState("")
+
+  const formatInputValue = (val: string) => {
+    const rawValue = val.replace(/\D/g, "")
+    if (!rawValue) return ""
+
+    if (currency === "CLP") {
+      return rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+    }
+    return rawValue
+  }
+
+  const handleMontoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatInputValue(e.target.value)
+    setMontoDisplay(formatted)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onAdd(nombre, Number.parseFloat(monto))
+    const rawValue = montoDisplay.replace(/\./g, "")
+    onAdd(nombre, Number.parseFloat(rawValue))
     setNombre("")
-    setMonto("")
+    setMontoDisplay("")
   }
 
   return (
@@ -497,13 +375,12 @@ function GastoForm({ onAdd, currency }: { onAdd: (nombre: string, monto: number)
           <Label htmlFor="gasto-monto">Monto mensual ({currency})</Label>
           <Input
             id="gasto-monto"
-            type="number"
-            placeholder="0.00"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
+            type="text"
+            inputMode="numeric"
+            placeholder={currency === "CLP" ? "Ej: 50.000" : "0.00"}
+            value={montoDisplay}
+            onChange={handleMontoChange}
             required
-            step="0.01"
-            min="0"
           />
         </div>
       </div>
@@ -514,116 +391,7 @@ function GastoForm({ onAdd, currency }: { onAdd: (nombre: string, monto: number)
   )
 }
 
-function DeudaForm({
-  onAdd,
-  currency,
-}: { onAdd: (nombre: string, monto: number, tasa: number) => void; currency: string }) {
-  const [nombre, setNombre] = useState("")
-  const [monto, setMonto] = useState("")
-  const [tasa, setTasa] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onAdd(nombre, Number.parseFloat(monto), Number.parseFloat(tasa))
-    setNombre("")
-    setMonto("")
-    setTasa("")
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="space-y-2">
-          <Label htmlFor="deuda-nombre">Nombre de la deuda</Label>
-          <Input
-            id="deuda-nombre"
-            placeholder="Ej: Tarjeta de crédito..."
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="deuda-monto">Monto total ({currency})</Label>
-          <Input
-            id="deuda-monto"
-            type="number"
-            placeholder="0.00"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            required
-            step="0.01"
-            min="0"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="deuda-tasa">Cantidad de cuotas</Label>
-          <Input
-            id="deuda-tasa"
-            type="number"
-            placeholder="0.0"
-            value={tasa}
-            onChange={(e) => setTasa(e.target.value)}
-            required
-            step="0.1"
-            min="0"
-          />
-        </div>
-      </div>
-      <Button type="submit" className="w-full md:w-auto">
-        Agregar Deuda
-      </Button>
-    </form>
-  )
-}
-
-function PrestamoForm({
-  onAdd,
-  currency,
-}: { onAdd: (nombre: string, monto: number) => void; currency: string }) {
-  const [nombre, setNombre] = useState("")
-  const [monto, setMonto] = useState("")
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onAdd(nombre, Number.parseFloat(monto))
-    setNombre("")
-    setMonto("")
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="prestamo-nombre">Título del préstamo</Label>
-          <Input
-            id="prestamo-nombre"
-            placeholder="Ej: Préstamo a Juan..."
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="prestamo-monto">Monto prestado ({currency})</Label>
-          <Input
-            id="prestamo-monto"
-            type="number"
-            placeholder="0.00"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            required
-            step="0.01"
-            min="0"
-          />
-        </div>
-      </div>
-      <Button type="submit" className="w-full md:w-auto">
-        Agregar Préstamo
-      </Button>
-    </form>
-  )
-}
 
 function ItemList({
   items,
@@ -641,7 +409,7 @@ function ItemList({
 
   const formatCurrency = (amount: number) => {
     if (currency === "CLP") {
-      return `$${amount.toLocaleString("es-CL", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+      return `$${Math.floor(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`
     }
     return `${currency} ${amount.toFixed(2)}`
   }
@@ -652,7 +420,9 @@ function ItemList({
         <div key={item.id} className="flex items-center justify-between p-4 bg-accent/50 rounded-lg">
           <div>
             <p className="font-medium">{item.nombre}</p>
-            <p className="text-2xl font-light mt-1">{formatCurrency(item.monto)}</p>
+            <p className="text-2xl font-light mt-1">
+              {formatCurrency(item.monto)}
+            </p>
           </div>
           <Button variant="ghost" size="sm" onClick={() => onRemove(item.id)}>
             Eliminar
@@ -663,36 +433,4 @@ function ItemList({
   )
 }
 
-function DeudaList({ items, onRemove, currency }: { items: any[]; onRemove: (id: string) => void; currency: string }) {
-  if (items.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p>No tienes elementos registrados aún</p>
-      </div>
-    )
-  }
 
-  const formatCurrency = (amount: number) => {
-    if (currency === "CLP") {
-      return `$${amount.toLocaleString("es-CL", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-    }
-    return `${currency} ${amount.toFixed(2)}`
-  }
-
-  return (
-    <div className="space-y-2">
-      {items.map((item) => (
-        <div key={item.id} className="flex items-center justify-between p-4 bg-accent/50 rounded-lg">
-          <div>
-            <p className="font-medium">{item.nombre}</p>
-            <p className="text-2xl font-light mt-1">{formatCurrency(item.monto)}</p>
-            <p className="text-sm text-muted-foreground mt-1">Interés: {item.tasa}%</p>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => onRemove(item.id)}>
-            Eliminar
-          </Button>
-        </div>
-      ))}
-    </div>
-  )
-}

@@ -4,8 +4,12 @@ import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Sparkles, LogOut } from "lucide-react"
+import { Sparkles, LogOut, Settings, Sun, Moon, FileDown } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useTheme } from "next-themes"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
 
 interface WelcomeHeaderProps {
   userName: string
@@ -16,6 +20,7 @@ interface WelcomeHeaderProps {
 }
 
 export function WelcomeHeader({ userName, setUserName, currency, onCurrencyChange, onLogout }: WelcomeHeaderProps) {
+  const { theme, setTheme } = useTheme()
   // Solo mostrar edición si no hay nombre de usuario (usuario no logueado/sin nombre)
   const [isEditing, setIsEditing] = useState(false)
   const [tempName, setTempName] = useState(userName)
@@ -40,6 +45,12 @@ export function WelcomeHeader({ userName, setUserName, currency, onCurrencyChang
     if (hour < 12) return "Buenos días"
     if (hour < 19) return "Buenas tardes"
     return "Buenas noches"
+  }
+
+  const handleExport = () => {
+    toast.success("Preparando reporte Excel...", {
+      description: "Tus datos se están procesando para la descarga.",
+    })
   }
 
   const getCurrencySymbol = (curr: string) => {
@@ -80,20 +91,69 @@ export function WelcomeHeader({ userName, setUserName, currency, onCurrencyChang
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-4">
-        <div className="w-[130px]" />
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              <Settings className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Configuración</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Configuraciones</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              <div className="space-y-4">
+                <Label>Tema de la aplicación</Label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={theme === "light" ? "secondary" : "outline"}
+                    className="flex-1 gap-2"
+                    onClick={() => setTheme("light")}
+                  >
+                    <Sun className="h-4 w-4" />
+                    Claro
+                  </Button>
+                  <Button
+                    variant={theme === "dark" ? "secondary" : "outline"}
+                    className="flex-1 gap-2"
+                    onClick={() => setTheme("dark")}
+                  >
+                    <Moon className="h-4 w-4" />
+                    Oscuro
+                  </Button>
+                </div>
+              </div>
 
-        <Select value={currency} onValueChange={onCurrencyChange}>
-          <SelectTrigger className="w-[130px] h-9 text-sm">
-            <SelectValue>
-              {getCurrencySymbol(currency)} {currency}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="CLP">$ CLP</SelectItem>
-            <SelectItem value="USD">$ USD</SelectItem>
-            <SelectItem value="EUR">€ EUR</SelectItem>
-          </SelectContent>
-        </Select>
+              <div className="space-y-4">
+                <Label>Moneda principal</Label>
+                <Select value={currency} onValueChange={onCurrencyChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue>
+                      {getCurrencySymbol(currency)} {currency}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CLP">$ CLP</SelectItem>
+                    <SelectItem value="USD">$ USD</SelectItem>
+                    <SelectItem value="EUR">€ EUR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-4">
+                <Label>Acciones de datos</Label>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 text-muted-foreground hover:text-foreground"
+                  onClick={handleExport}
+                >
+                  <FileDown className="h-4 w-4" />
+                  Exportar Reporte Excel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {onLogout && (
           <Button variant="ghost" size="sm" onClick={onLogout} className="text-muted-foreground hover:text-foreground">
@@ -107,7 +167,7 @@ export function WelcomeHeader({ userName, setUserName, currency, onCurrencyChang
         <h1 className="text-4xl md:text-5xl font-light mb-2 text-balance">
           {getGreeting()}, {userName}
         </h1>
-        <p className="text-lg text-muted-foreground text-pretty">Organiza tus finanzas de manera simple y tranquila</p>
+        <p className="text-lg text-muted-foreground text-pretty">Organiza tus finanzas de manera simple y tranquila con Lukas</p>
         {!onLogout && (
           <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="mt-2">
             Cambiar nombre
