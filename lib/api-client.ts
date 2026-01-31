@@ -29,7 +29,7 @@ export class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = this.getToken()
 
-    const headers: HeadersInit = {
+    const headers: any = {
       "Content-Type": "application/json",
       Accept: "application/json",
       ...options.headers,
@@ -41,7 +41,7 @@ export class ApiClient {
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
-      headers,
+      headers: headers as HeadersInit,
     })
 
     if (!response.ok) {
@@ -121,6 +121,13 @@ export class ApiClient {
   async deleteGasto(id: string) {
     return this.request(`/gastos?id=${id}`, {
       method: "DELETE",
+    })
+  }
+
+  async updateGastoStatus(id: string, pagado: boolean) {
+    return this.request("/gastos", {
+      method: "PATCH",
+      body: JSON.stringify({ id, pagado }),
     })
   }
 

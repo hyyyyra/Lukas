@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WelcomeHeader } from "@/components/welcome-header"
 import { FinancialSummary } from "@/components/financial-summary"
-import { TrendingUp, TrendingDown } from "lucide-react"
+import { TrendingUp, TrendingDown, CheckCircle, Circle } from "lucide-react"
 
 import { convertCurrency, type Currency } from "@/lib/currency-converter"
 import { useRouter } from "next/navigation"
@@ -18,7 +18,7 @@ import { apiClient } from "@/lib/api-client"
 
 interface FinancialData {
   ingresos: Array<{ id: string; nombre: string; monto: number }>
-  gastos: Array<{ id: string; nombre: string; monto: number }>
+  gastos: Array<{ id: string; nombre: string; monto: number; pagado?: boolean }>
   moneda: Currency
 }
 
@@ -92,6 +92,7 @@ export function FinanceApp() {
                 id: i.id.toString(),
                 nombre: i.nombre,
                 monto: Number(i.monto),
+                pagado: !!i.pagado,
               }))
               : [],
           }))
@@ -136,12 +137,29 @@ export function FinanceApp() {
         const newGasto = await apiClient.createGasto(nombre, monto)
         setData((prev) => ({
           ...prev,
-          gastos: [...prev.gastos, { ...(newGasto as any), id: (newGasto as any).id.toString() }],
+          gastos: [...prev.gastos, { ...(newGasto as any), id: (newGasto as any).id.toString(), pagado: false }],
         }))
       } catch (error) {
         console.error("Error saving gasto:", error)
         alert("Error al guardar el gasto. Por favor intente nuevamente.")
       }
+    }
+  }
+
+  const toggleGastoStatus = async (id: string) => {
+    const gasto = data.gastos.find((g) => g.id === id)
+    if (!gasto) return
+
+    const newStatus = !gasto.pagado
+    try {
+      await apiClient.updateGastoStatus(id, newStatus)
+      setData((prev) => ({
+        ...prev,
+        gastos: prev.gastos.map((g) => (g.id === id ? { ...g, pagado: newStatus } : g)),
+      }))
+    } catch (error) {
+      console.error("Error updating gasto status:", error)
+      alert("Error al actualizar el estado del gasto.")
     }
   }
 
@@ -257,6 +275,7 @@ export function FinanceApp() {
                 <ItemList
                   items={data.gastos}
                   onRemove={(id) => removeItem("gastos", id)}
+                  onToggleStatus={toggleGastoStatus}
                   type="gasto"
                   currency={data.moneda}
                 />
@@ -396,9 +415,16 @@ function GastoForm({ onAdd, currency }: { onAdd: (nombre: string, monto: number)
 function ItemList({
   items,
   onRemove,
+  onToggleStatus,
   type,
   currency,
-}: { items: any[]; onRemove: (id: string) => void; type: string; currency: string }) {
+}: {
+  items: any[]
+  onRemove: (id: string) => void
+  onToggleStatus?: (id: string) => void
+  type: string
+  currency: string
+}) {
   if (items.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -415,18 +441,41 @@ function ItemList({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {items.map((item) => (
-        <div key={item.id} className="flex items-center justify-between p-4 bg-accent/50 rounded-lg">
-          <div>
-            <p className="font-medium">{item.nombre}</p>
-            <p className="text-2xl font-light mt-1">
-              {formatCurrency(item.monto)}
-            </p>
+        <div
+          key={item.id}
+          className={`flex items-center justify-between p-4 rounded-xl transition-all duration-300 border ${item.pagado ? "bg-primary/5 border-primary/20 opacity-80" : "bg-accent/50 border-transparent"
+            }`}
+        >
+          <div className="flex items-center gap-4">
+            {type === "gasto" && onToggleStatus && (
+              <button
+                onClick={() => onToggleStatus(item.id)}
+                className={`transition-colors duration-200 ${item.pagado ? "text-primary" : "text-muted-foreground hover:text-primary"
+                  }`}
+                title={item.pagado ? "Marcar como no pagado" : "Marcar como pagado"}
+              >
+                {item.pagado ? <CheckCircle className="h-6 w-6" /> : <Circle className="h-6 w-6" />}
+              </button>
+            )}
+            <div>
+              <p className={`font-medium ${item.pagado ? "line-through text-muted-foreground" : ""}`}>{item.nombre}</p>
+              <p className={`text-2xl font-light mt-1 ${item.pagado ? "text-muted-foreground" : ""}`}>
+                {formatCurrency(item.monto)}
+              </p>
+            </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => onRemove(item.id)}>
-            Eliminar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onRemove(item.id)}
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            >
+              Eliminar
+            </Button>
+          </div>
         </div>
       ))}
     </div>
