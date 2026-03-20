@@ -6,7 +6,7 @@ export async function GET() {
     const result = await query("SELECT 1 as connected")
     return NextResponse.json({
       status: "connected",
-      database: "MySQL",
+      database: "SQL Server",
       message: "Conexión exitosa",
       result,
     })

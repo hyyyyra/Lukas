@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     }
 
     // Nota: Se están usando los nombres de columnas de la base de datos existente (mayúsculas)
-    const result = await query("INSERT INTO usuarios (NOMBRE, APELLIDO, EMAIL, CONTRASENA) VALUES (?, ?, ?, ?)", [
+    const result = await query("INSERT INTO USUARIOS (NOMBRE, APELLIDO, EMAIL, CONTRASENA) VALUES (?, ?, ?, ?)", [
       nombre,
       apellidos,
       email,

@@ -37,7 +37,7 @@ export const DATABASE_CONFIG = {
 // Tipo de BDD activa
 export type DatabaseType = "LARAVEL" | "SUPABASE" | "POSTGRES" | "MONGODB" | "MYSQL" | "LOCAL"
 
-export const ACTIVE_DATABASE: DatabaseType = "MYSQL"
+export const ACTIVE_DATABASE: DatabaseType = "LOCAL"
 
 // Helper para saber si estamos usando una BDD real
 export function isUsingRemoteDatabase(): boolean {
@@ -49,9 +49,11 @@ export function getLaravelApiUrl(): string {
 }
 
 export const DB_CONFIG = {
-  host: process.env.DB_HOST || "localhost",
-  port: Number.parseInt(process.env.DB_PORT || "3306"),
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "root123..",
+  host: process.env.DB_HOST || "127.0.0.1",
+  port: Number.parseInt(process.env.DB_PORT || "1434"),
+  user: process.env.DB_USER || "sa",
+  password: process.env.DB_PASSWORD || "fabi123",
   database: process.env.DB_DATABASE || "LUKAS_DESA",
+  encrypt: process.env.DB_ENCRYPT === "true",
+  trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== "false",
 }
