@@ -40,9 +40,20 @@ export function FinanceApp() {
       const savedData = localStorage.getItem("financialData")
       const token = localStorage.getItem("auth_token")
 
+      if (!token) {
+        router.push("/login")
+        return
+      }
+
+      const onboardingCompleted = localStorage.getItem("onboarding_completed")
+      if (!onboardingCompleted) {
+        router.push("/onboarding")
+        return
+      }
+
       if (savedName) {
         setUserName(savedName)
-      } else if (token) {
+      } else {
         try {
           apiClient.setToken(token)
           const profile = await apiClient.getUserProfile()
@@ -53,14 +64,14 @@ export function FinanceApp() {
               localStorage.setItem("userName", name)
             } else {
               router.push("/login")
+              return
             }
           }
         } catch (error) {
           console.error("Error fetching profile", error)
           router.push("/login")
+          return
         }
-      } else {
-        router.push("/login")
       }
 
       if (savedData) {
@@ -71,34 +82,30 @@ export function FinanceApp() {
         }
       }
 
-      if (token) {
-        try {
-          const [ingresos, gastos] = await Promise.all([
-            apiClient.getIngresos(),
-            apiClient.getGastos(),
-          ])
+      try {
+        apiClient.setToken(token)
+        const [ingresos, gastos] = await Promise.all([apiClient.getIngresos(), apiClient.getGastos()])
 
-          setData((prev) => ({
-            ...prev,
-            ingresos: Array.isArray(ingresos)
-              ? ingresos.map((i: any) => ({
+        setData((prev) => ({
+          ...prev,
+          ingresos: Array.isArray(ingresos)
+            ? ingresos.map((i: any) => ({
                 id: i.id.toString(),
                 nombre: i.nombre,
                 monto: Number(i.monto),
               }))
-              : [],
-            gastos: Array.isArray(gastos)
-              ? gastos.map((i: any) => ({
+            : [],
+          gastos: Array.isArray(gastos)
+            ? gastos.map((i: any) => ({
                 id: i.id.toString(),
                 nombre: i.nombre,
                 monto: Number(i.monto),
                 pagado: !!i.pagado,
               }))
-              : [],
-          }))
-        } catch (error) {
-          console.error("Error fetching financial data", error)
-        }
+            : [],
+        }))
+      } catch (error) {
+        console.error("Error fetching financial data", error)
       }
     }
 
@@ -119,10 +126,25 @@ export function FinanceApp() {
     if (nombre && monto > 0) {
       try {
         const newIngreso = await apiClient.createIngreso(nombre, monto)
-        setData((prev) => ({
-          ...prev,
-          ingresos: [...prev.ingresos, { ...(newIngreso as any), id: (newIngreso as any).id.toString() }],
-        }))
+        const ingresoId = (newIngreso as any)?.id
+        if (ingresoId != null && ingresoId !== "") {
+          setData((prev) => ({
+            ...prev,
+            ingresos: [...prev.ingresos, { ...(newIngreso as any), id: String(ingresoId) }],
+          }))
+        } else {
+          const ingresos = await apiClient.getIngresos()
+          if (Array.isArray(ingresos)) {
+            setData((prev) => ({
+              ...prev,
+              ingresos: ingresos.map((i: any) => ({
+                id: String(i.id),
+                nombre: i.nombre,
+                monto: Number(i.monto),
+              })),
+            }))
+          }
+        }
       } catch (error) {
         console.error("Error saving ingreso:", error)
         // Fallback or alert
@@ -135,10 +157,29 @@ export function FinanceApp() {
     if (nombre && monto > 0) {
       try {
         const newGasto = await apiClient.createGasto(nombre, monto)
-        setData((prev) => ({
-          ...prev,
-          gastos: [...prev.gastos, { ...(newGasto as any), id: (newGasto as any).id.toString(), pagado: false }],
-        }))
+        const gastoId = (newGasto as any)?.id
+        if (gastoId != null && gastoId !== "") {
+          setData((prev) => ({
+            ...prev,
+            gastos: [
+              ...prev.gastos,
+              { ...(newGasto as any), id: String(gastoId), pagado: (newGasto as any).pagado ?? false },
+            ],
+          }))
+        } else {
+          const gastos = await apiClient.getGastos()
+          if (Array.isArray(gastos)) {
+            setData((prev) => ({
+              ...prev,
+              gastos: gastos.map((i: any) => ({
+                id: String(i.id),
+                nombre: i.nombre,
+                monto: Number(i.monto),
+                pagado: !!i.pagado,
+              })),
+            }))
+          }
+        }
       } catch (error) {
         console.error("Error saving gasto:", error)
         alert("Error al guardar el gasto. Por favor intente nuevamente.")

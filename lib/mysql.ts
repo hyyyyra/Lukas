@@ -51,10 +51,23 @@ export async function query(sql: string, params?: any[]) {
     const result = await request.query(finalSql)
 
     if (isInsert) {
-      const insertRecordset = result.recordsets?.[1]
-      const insertId = insertRecordset?.[0]?.insertId ?? null
+      const sets = result.recordsets ?? []
+      let insertId: number | null = null
+      for (let i = sets.length - 1; i >= 0; i--) {
+        const row = sets[i]?.[0] as Record<string, unknown> | undefined
+        if (!row) continue
+        const raw =
+          row.insertId ??
+          row.INSERTID ??
+          row.insertid ??
+          (Object.keys(row).length === 1 ? Object.values(row)[0] : undefined)
+        if (raw !== undefined && raw !== null) {
+          insertId = typeof raw === "bigint" ? Number(raw) : Number(raw)
+          break
+        }
+      }
       return {
-        insertId,
+        insertId: Number.isFinite(insertId) ? insertId : null,
         rowsAffected: result.rowsAffected?.[0] ?? 0,
       }
     }

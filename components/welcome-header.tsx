@@ -4,12 +4,11 @@ import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Sparkles, LogOut, Settings, Sun, Moon, FileDown } from "lucide-react"
+import { Sparkles, LogOut, Settings, Sun, Moon } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTheme } from "next-themes"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { toast } from "sonner"
 
 interface WelcomeHeaderProps {
   userName: string
@@ -45,12 +44,6 @@ export function WelcomeHeader({ userName, setUserName, currency, onCurrencyChang
     if (hour < 12) return "Buenos días"
     if (hour < 19) return "Buenas tardes"
     return "Buenas noches"
-  }
-
-  const handleExport = () => {
-    toast.success("Preparando reporte Excel...", {
-      description: "Tus datos se están procesando para la descarga.",
-    })
   }
 
   const getCurrencySymbol = (curr: string) => {
@@ -139,17 +132,6 @@ export function WelcomeHeader({ userName, setUserName, currency, onCurrencyChang
                     <SelectItem value="EUR">€ EUR</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-4">
-                <Label>Acciones de datos</Label>
-                <Button
-                  variant="outline"
-                  className="w-full gap-2 text-muted-foreground hover:text-foreground"
-                  onClick={handleExport}
-                >
-                  <FileDown className="h-4 w-4" />
-                  Exportar Reporte Excel
-                </Button>
               </div>
             </div>
           </DialogContent>
