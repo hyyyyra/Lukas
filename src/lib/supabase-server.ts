@@ -1,10 +1,16 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 
-export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error(
+    "Supabase server env vars missing. Set SUPABASE_SERVICE_ROLE_KEY and SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL.",
+  )
+}
+
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey)
 
 // Valida el JWT de Supabase y retorna el userId o un NextResponse de error
 export async function getUserFromToken(
