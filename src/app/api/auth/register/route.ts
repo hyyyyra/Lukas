@@ -65,9 +65,17 @@ export async function POST(request: Request) {
         email,
       },
     })
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Error desconocido"
-    console.error("[register] Error:", message)
-    return NextResponse.json({ message: "Error al crear cuenta: " + message }, { status: 500 })
+  } catch (error: any) {
+    console.error("[register] FULL ERROR:", error)
+  
+    return NextResponse.json(
+      {
+        message:
+          error?.message ||
+          error?.details ||
+          JSON.stringify(error),
+      },
+      { status: 500 }
+    )
   }
 }
