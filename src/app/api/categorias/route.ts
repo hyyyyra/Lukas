@@ -30,12 +30,16 @@ export async function GET(request: Request) {
 
     throwIfSupabaseError(error)
 
-    const categorias = (data ?? []).map((row) => ({
-      id: row.ID,
-      nombre: row.NOMBRE_CATEGORIA,
-      tipo_categoria: row.TIPO_CATEGORIA,
-      tipo: row.TIPO_CATEGORIAS?.NOMBRE_TIPO,
-    }))
+    const categorias = (data ?? []).map((row) => {
+      const tipoRel = row.TIPO_CATEGORIAS
+      const tipo = Array.isArray(tipoRel) ? tipoRel[0] : tipoRel
+      return {
+        id: row.ID,
+        nombre: row.NOMBRE_CATEGORIA,
+        tipo_categoria: row.TIPO_CATEGORIA,
+        tipo: tipo?.NOMBRE_TIPO,
+      }
+    })
 
     return NextResponse.json(categorias)
   } catch (error: unknown) {

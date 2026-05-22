@@ -12,9 +12,13 @@ export async function GET(request: Request) {
       .from("USUARIOS")
       .select("UUID, NOMBRE, APELLIDOS, EMAIL, CREATED_AT")
       .eq("UUID", auth.userId)
-      .single()
+      .maybeSingle()
 
     throwIfSupabaseError(error)
+
+    if (!data) {
+      return NextResponse.json({ message: "Usuario no encontrado" }, { status: 404 })
+    }
 
     return NextResponse.json({
       id: data.UUID,

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { supabase } from "@/src/lib/supabase"
 import { supabaseAdmin } from "@/src/lib/supabase-server"
 import { LUKAS_SCHEMA, throwIfSupabaseError } from "@/src/lib/supabase-db"
 
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
       throw dbError
     }
 
-    const { data: sessionData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+    const { data: sessionData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
